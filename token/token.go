@@ -6,6 +6,8 @@ const (
 	Identifier = "Identifier"
 	Label      = "Label"
 
+  NewLine = "NewLine"
+
 	PrintlnKw = "PrintlnKw"
 	PrintKw   = "PrintKw"
 
@@ -47,17 +49,13 @@ const (
 	And = "And"
 	Or  = "Or"
 	//Xor          = "Xor"
-	Not = "Not"
+	//Not = "Not"
 
 	TrueKw  = "True"
 	FalseKw = "False"
 
 	LParen = "LParen"
 	RParen = "RParen"
-
-	NewLine = "NewLine"
-	End     = "End"
-	Error   = "Error"
 
 	TypeNum  = "Num"
 	TypeStr  = "Str"

@@ -24,12 +24,17 @@ func main() {
 
       switch option {
         case "-v":
+          fallthrough
         case "--version":
           version()
 
         case "-h":
+          fallthrough
         case "--help":
           help()
+
+        default:
+          usage()
       }
     
     // run | compile | assemble <file>
@@ -63,7 +68,7 @@ func main() {
       }
     
     default:
-      fmt.Println(UsageMsg)
+      usage()
   }
 }
 
@@ -93,7 +98,7 @@ func help() {
   
   fmt.Println("A simple, (now compiled!) programming language.\nIt's very easy to use.")
 
-  fmt.Printf("%s\n\n", UsageMsg)
+  fmt.Printf("\n%s\n\n", UsageMsg)
 
   fmt.Println("csimple compile / build <file> | compile source code in 'file' to bytecode")
   fmt.Println("csimple run <file>             | run bytecode in 'file'")
@@ -103,4 +108,8 @@ func help() {
   
   fmt.Println("\nMade by JuniorBecari10.")
   fmt.Println("https://github.com/JuniorBecari10/CSimple")
+}
+
+func usage() {
+  fmt.Println(UsageMsg)
 }
