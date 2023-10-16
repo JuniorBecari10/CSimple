@@ -3,6 +3,7 @@ package lexer
 import (
 	"fmt"
 	"strconv"
+	"unicode"
 
 	"csimple/token"
 	"csimple/util"
@@ -39,17 +40,22 @@ func New(input string, data util.FileData) Lexer {
 	}
 }
 
-func (l *Lexer) Lex() []token.Token {
+func (l *Lexer) Lex() ([]token.Token, bool) {
 	tokens := []token.Token{}
+	hadError := false
 
 	for l.cursor < len(l.input) {
+		l.skipWhitespace()
+
 		l.start = l.cursor
 		l.startPos = l.pos
 
 		switch l.advance() {
 		case '\n':
-			tokens = append(tokens, l.newToken(token.NewLine))
-			l.pos.Line++
+			tokens = append(tokens, l.newTokenAbs(token.NewLine, "", ""))
+			//l.pos.Line++
+			//l.pos.Col = 0
+
 			fallthrough
 		case '\t' | '\r':
 			fallthrough
@@ -171,6 +177,7 @@ func (l *Lexer) Lex() []token.Token {
 
 				if err != nil {
 					util.ThrowError(l.data, l.startPos, fmt.Sprintf("Invalid number: '%s'", l.input[l.start:l.cursor]))
+					hadError = true
 
 					continue
 				}
@@ -187,12 +194,23 @@ func (l *Lexer) Lex() []token.Token {
 				}
 
 				tokens = append(tokens, l.newToken(token.Identifier))
-continue
+				continue
 			}
+
+			// else
+			l.recede()
+			util.ThrowError(l.data, l.pos, fmt.Sprintf("Unknown token: '%c'", l.input[l.cursor]))
+			hadError = true
 		}
 	}
 
-	return tokens
+	return tokens, hadError
+}
+
+func (l *Lexer) skipWhitespace() {
+	for unicode.IsSpace(rune(l.peek())) && l.peek() != '\n' {
+		l.advance()
+	}
 }
 
 func (l *Lexer) peek() uint8 {
@@ -205,16 +223,31 @@ func (l *Lexer) peek() uint8 {
 
 func (l *Lexer) advance() uint8 {
 	c := l.peek()
-	l.cursor++
-	l.pos.Col++
+
+	if c == '\n' {
+		l.pos.Line++
+		l.pos.Col = 0
+	} else {
+		l.cursor++
+		l.pos.Col++
+	}
 
 	return c
 }
 
 // todo! check if it's out of bounds and change Line if so
 func (l *Lexer) recede() {
-  l.cursor--
-  l.pos.Col--
+  if l.pos.Col == 0 {
+		if l.pos.Line == 0 {
+			panic("line cannot be lower than 0!")
+		}
+
+		l.pos.Line--
+		l.pos.Col = len(l.data.Lines[l.pos.Line])
+	} else {
+		l.cursor--
+		l.pos.Col--
+	}
 }
 
 func (l *Lexer) matchAdvance(c uint8) bool {
@@ -248,6 +281,15 @@ func (l *Lexer) newTokenLit(ty token.TokenType, lit any) token.Token {
 		Type:    ty,
 		Pos:     l.startPos,
 		Lexeme:  l.input[l.start:l.cursor],
+		Literal: lit,
+	}
+}
+
+func (l *Lexer) newTokenAbs(ty token.TokenType, lex string, lit any) token.Token {
+	return token.Token{
+		Type:    ty,
+		Pos:     l.startPos,
+		Lexeme:  lex,
 		Literal: lit,
 	}
 }

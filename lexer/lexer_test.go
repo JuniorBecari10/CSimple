@@ -8,29 +8,43 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-  input := "123.4 hello_"
+  input := ">=   \n hello_$"
 	l := New(input, util.FileData {
     Name: "test.go",
     Lines: []string { input },
   })
-	tokens := l.Lex()
+	tokens, hadError := l.Lex()
+
+	if hadError {
+		t.Errorf("Lexer error\n")
+	}
 
 	expected := []token.Token{
 		{
-			Type: token.Number,
+			Type: token.GreaterEq,
 			Pos: token.Position{
 				Line: 0,
 				Col:  0,
 			},
-			Lexeme:  "123.4",
-			Literal: 123.4,
+			Lexeme:  ">=",
+			Literal: ">=",
+		},
+
+		{
+			Type: token.NewLine,
+			Pos: token.Position{
+				Line: 0,
+				Col: 5,
+			},
+			Lexeme: "",
+			Literal: "",
 		},
     
 		{
 			Type: token.Identifier,
 			Pos: token.Position{
-				Line: 0,
-				Col:  6,
+				Line: 1,
+				Col:  1,
 			},
 			Lexeme:  "hello_",
 			Literal: "hello_",
