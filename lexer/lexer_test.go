@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"strings"
 	"testing"
 
 	"csimple/token"
@@ -8,10 +9,10 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-  input := ">=   \n hello_$"
+  input := ">=   \n hello_"
 	l := New(input, util.FileData {
     Name: "test.go",
-    Lines: []string { input },
+    Lines: strings.Split(input, "\n"),
   })
 	tokens, hadError := l.Lex()
 

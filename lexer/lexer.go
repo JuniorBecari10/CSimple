@@ -200,6 +200,8 @@ func (l *Lexer) Lex() ([]token.Token, bool) {
 			// else
 			l.recede()
 			util.ThrowError(l.data, l.pos, fmt.Sprintf("Unknown token: '%c'", l.input[l.cursor]))
+			l.advance()
+			
 			hadError = true
 		}
 	}
