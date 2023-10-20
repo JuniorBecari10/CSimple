@@ -1,156 +1,119 @@
 package ast
 
-import (
-	"csimple/token"
-)
-
 const (
-  TrueType  = "True"
-  FalseType = "False"
+  InputNum = "num"
+  InputStr = "str"
+  InputBool = "bool"
 )
-
-type Node interface {
-  node()
-}
 
 type Statement interface {
-  Node
   stat()
 }
 
 // Syntax: <ident> = <expression>
-type VarDeclStatement struct {
-  Name  Identifier
-  Value ExpressionNode
+type VarDecl struct {
+  Name  string
+  Value Expression
 }
 
 // Syntax: <ident> +|-|*|/= <expression>
-type OperationStatement struct {
-  Name  Identifier
-  Value ExpressionNode
+type Operation struct {
+  Name  string
+  Value Expression
   Op    string
 }
 
 // Syntax: print <expression>
-type PrintStatement struct {
-  Token       token.Token // print keyword
+type Print struct {
   BreakLine   bool
-  Expression  ExpressionNode
+  Value  Expression
 }
 
 // Syntax: goto :<label>
-type GotoStatement struct {
-  Token token.Token // goto keyword
+type Goto struct {
   Label string
 }
 
 // Syntax: if <expression> goto :<label>
-type IfStatement struct {
-  Token      token.Token // goto keyword
-  Expression ExpressionNode
+type If struct {
+  Exp Expression
   Label      string
 }
 
-type ExpressionStatement struct {
-  Expression ExpressionNode
+type Exp struct {
+  Exp Expression
 }
 
-type LabelStatement struct {
+type Label struct {
   Name string
 }
 
-type ExitStatement struct {
-  Code ExpressionNode
+type Exit struct {
+  Code Expression
 }
 
-type RetStatement struct {}
+type Ret struct {}
 
-type EndStatement struct {}
-
-type ErrorStatement struct {
-  Msg string
-}
-
-func (vs VarDeclStatement)    stat() {}
-func (os OperationStatement)  stat() {}
-func (ps PrintStatement)      stat() {}
-func (es EndStatement)        stat() {}
-func (ls LabelStatement)      stat() {}
-func (es ExitStatement)       stat() {}
-func (rs RetStatement)        stat() {}
-func (gs GotoStatement)       stat() {}
-func (is IfStatement)         stat() {}
-func (es ExpressionStatement) stat() {}
-func (es ErrorStatement)      stat() {}
-
-func (vs VarDeclStatement)    node() {}
-func (os OperationStatement)  node() {}
-func (ps PrintStatement)      node() {}
-func (es EndStatement)        node() {}
-func (ls LabelStatement)      node() {}
-func (es ExitStatement)       node() {}
-func (rs RetStatement)        node() {}
-func (gs GotoStatement)       node() {}
-func (is IfStatement)         node() {}
-func (es ExpressionStatement) node() {}
-func (es ErrorStatement)      node() {}
+func (v VarDecl)    stat() {}
+func (o Operation)  stat() {}
+func (p Print)      stat() {}
+func (l Label)      stat() {}
+func (e Exit)       stat() {}
+func (r Ret)        stat() {}
+func (g Goto)       stat() {}
+func (i If)         stat() {}
+func (e Exp)        stat() {}
 
 // Expressions
 
-type ExpressionNode interface {
-  exNode()
+type Expression interface {
+  exp()
 }
 
 type Identifier struct {
-  Token token.Token
   Value string
 }
 
-type NumberNode struct {
+type Number struct {
   Value float64
 }
 
-type StringNode struct {
+type String struct {
   Value string
 }
 
-type BinNode struct {
-  NodeA ExpressionNode
-  NodeB ExpressionNode
+type Bin struct {
+  NodeA Expression
+  NodeB Expression
   Op string
 }
 
-type PlusNode struct {
-  Value ExpressionNode
+type Minus struct {
+  Value Expression
 }
 
-type MinusNode struct {
-  Value ExpressionNode
-}
-
-type InputNode struct {
+type Input struct {
   Type string
 }
 
-type BoolNode struct {
-  Type string
+type Bool struct {
+  Value bool
 }
 
-type FactorialNode struct {
-  Node ExpressionNode
+type Factorial struct {
+  Exp Expression
 }
 
-type ExecNode struct {
-  Command ExpressionNode
+type Exec struct {
+  Command Expression
 }
 
-func (i Identifier)    exNode() {}
-func (n NumberNode)    exNode() {}
-func (s StringNode)    exNode() {}
-func (b BinNode)       exNode() {}
-func (p PlusNode)      exNode() {}
-func (m MinusNode)     exNode() {}
-func (i InputNode)     exNode() {}
-func (b BoolNode)      exNode() {}
-func (f FactorialNode) exNode() {}
-func (e ExecNode)      exNode() {}
+func (i Identifier) exp() {}
+func (n Number)     exp() {}
+func (s String)     exp() {}
+func (b Bin)        exp() {}
+func (m Minus)      exp() {}
+func (i Input)      exp() {}
+func (b Bool)       exp() {}
+func (f Factorial)  exp() {}
+func (e Exec)       exp() {}
