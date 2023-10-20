@@ -11,12 +11,12 @@ type Statement interface {
 }
 
 // Syntax: <ident> = <expression>
-type VarDecl struct {
+type Var struct {
   Name  string
   Value Expression
 }
 
-// Syntax: <ident> +|-|*|/= <expression>
+// Syntax: <ident> +|-|*|/|^|&| (|) | = <expression>
 type Operation struct {
   Name  string
   Value Expression
@@ -54,7 +54,7 @@ type Exit struct {
 
 type Ret struct {}
 
-func (v VarDecl)    stat() {}
+func (v Var)        stat() {}
 func (o Operation)  stat() {}
 func (p Print)      stat() {}
 func (l Label)      stat() {}

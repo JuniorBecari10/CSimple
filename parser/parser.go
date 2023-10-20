@@ -20,6 +20,42 @@ func New(input []token.Token, data util.FileData) Parser {
   }
 }
 
-func (p *Parser) Parse() []ast.Statement {
-  
+func (p *Parser) Parse() ([]ast.Statement, bool) {
+  stats := []ast.Statement {}
+  hadError := false
+
+  for p.cursor < len(p.input) {
+    for p.peek().Lexeme != "" && p.match(token.NewLine) {
+      p.advance()
+    }
+
+    if p.peek().Lexeme != "" {
+      break
+    }
+
+    ret := nil
+
+    
+  }
+
+  return stats, hadError
+}
+
+func (p *Parser) peek() token.Token {
+  if p.cursor >= len(p.input) {
+    return token.Token{Lexeme: ""}
+  }
+
+  return p.input[p.cursor]
+}
+
+func (p *Parser) match(t token.TokenType) bool {
+  return p.peek().Type == t
+}
+
+func (p *Parser) advance() token.Token {
+  t := p.peek()
+  p.cursor++
+
+  return t
 }
