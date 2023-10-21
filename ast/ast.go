@@ -6,114 +6,116 @@ const (
   InputBool = "bool"
 )
 
+// --- Statements
+
 type Statement interface {
   stat()
 }
 
 // Syntax: <ident> = <expression>
-type Var struct {
+type VarStat struct {
   Name  string
   Value Expression
 }
 
 // Syntax: <ident> +|-|*|/|^|&| (|) | = <expression>
-type Operation struct {
+type OperationStat struct {
   Name  string
   Value Expression
   Op    string
 }
 
 // Syntax: print <expression>
-type Print struct {
+type PrintStat struct {
   BreakLine   bool
   Value  Expression
 }
 
 // Syntax: goto :<label>
-type Goto struct {
+type GotoStat struct {
   Label string
 }
 
 // Syntax: if <expression> goto :<label>
-type If struct {
+type IfStat struct {
   Exp Expression
   Label      string
 }
 
-type Exp struct {
+type ExpStat struct {
   Exp Expression
 }
 
-type Label struct {
+type LabelStat struct {
   Name string
 }
 
-type Exit struct {
+type ExitStat struct {
   Code Expression
 }
 
-type Ret struct {}
+type RetStat struct {}
 
-func (v Var)        stat() {}
-func (o Operation)  stat() {}
-func (p Print)      stat() {}
-func (l Label)      stat() {}
-func (e Exit)       stat() {}
-func (r Ret)        stat() {}
-func (g Goto)       stat() {}
-func (i If)         stat() {}
-func (e Exp)        stat() {}
+func (v VarStat)        stat() {}
+func (o OperationStat)  stat() {}
+func (p PrintStat)      stat() {}
+func (l LabelStat)      stat() {}
+func (e ExitStat)       stat() {}
+func (r RetStat)        stat() {}
+func (g GotoStat)       stat() {}
+func (i IfStat)         stat() {}
+func (e ExpStat)        stat() {}
 
-// Expressions
+// --- Expressions
 
 type Expression interface {
   exp()
 }
 
-type Identifier struct {
+type IdentifierExp struct {
   Value string
 }
 
-type Number struct {
+type NumberExp struct {
   Value float64
 }
 
-type String struct {
+type StringExp struct {
   Value string
 }
 
-type Bin struct {
+type BoolExp struct {
+  Value bool
+}
+
+type BinExp struct {
   NodeA Expression
   NodeB Expression
   Op string
 }
 
-type Minus struct {
+type MinusExp struct {
   Value Expression
 }
 
-type Input struct {
+type InputExp struct {
   Type string
 }
 
-type Bool struct {
-  Value bool
-}
-
-type Factorial struct {
+type FactorialExp struct {
   Exp Expression
 }
 
-type Exec struct {
+type ExecExp struct {
   Command Expression
 }
 
-func (i Identifier) exp() {}
-func (n Number)     exp() {}
-func (s String)     exp() {}
-func (b Bin)        exp() {}
-func (m Minus)      exp() {}
-func (i Input)      exp() {}
-func (b Bool)       exp() {}
-func (f Factorial)  exp() {}
-func (e Exec)       exp() {}
+func (i IdentifierExp) exp() {}
+func (n NumberExp)     exp() {}
+func (s StringExp)     exp() {}
+func (b BoolExp)       exp() {}
+func (b BinExp)        exp() {}
+func (m MinusExp)      exp() {}
+func (i InputExp)      exp() {}
+func (f FactorialExp)  exp() {}
+func (e ExecExp)       exp() {}

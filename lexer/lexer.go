@@ -165,6 +165,9 @@ func (l *Lexer) Lex() ([]token.Token, bool) {
 		case ')':
 			tokens = append(tokens, l.newToken(token.RParen))
 
+		case ':':
+			tokens = append(tokens, l.newToken(token.Colon))
+
 		default:
 			if l.isDigit(l.peek()) {
 				l.advance()

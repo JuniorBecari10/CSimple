@@ -33,6 +33,7 @@ const (
 	Times  = "Times"
 	Divide = "Divide"
 
+	Colon = "Colon"
 	Power = "Power"
 	Bang  = "Bang"
 	Mod   = "Mod"
@@ -49,7 +50,6 @@ const (
 	And = "And"
 	Or  = "Or"
 	//Xor          = "Xor"
-	//Not = "Not"
 
 	TrueKw  = "True"
 	FalseKw = "False"

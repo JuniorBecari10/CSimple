@@ -33,13 +33,55 @@ func (p *Parser) Parse() ([]ast.Statement, bool) {
       break
     }
 
-    ret := nil
+    stat := p.statement()
 
-    
+    // an error occurred; either 'stat' is nil or it is an ExpStat and its Exp field is nil
+    if exp, ok := stat.(ast.ExpStat); (ok && exp.Exp == nil) || stat == nil {
+      hadError = true
+
+      for p.cursor < len(p.input) && p.match(token.NewLine) {
+        p.advance()
+      }
+
+      continue
+    }
+
+    stats = append(stats, stat)
   }
 
   return stats, hadError
 }
+
+// ---
+
+func (p *Parser) statement() ast.Statement {
+  tk := p.advance()
+
+  if len(p.input) >= 1 {
+    switch tk.Type {
+    case token.IfKw:
+      return p.parseIfStat()
+
+    case token.GotoKw:
+      return p.parseGotoStat()
+
+    case token.PrintKw:
+      fallthrough
+    case token.PrintlnKw:
+      return p.parsePrintStat()
+
+    case token.RetKw:
+      return p.parseRetStat()
+
+    case token.ExitKw:
+      return p.parseExitStat()
+    }
+  }
+
+  return ast.ExpStat { Exp: p.parseExp() }
+}
+
+// ---
 
 func (p *Parser) peek() token.Token {
   if p.cursor >= len(p.input) {
