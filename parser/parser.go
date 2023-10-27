@@ -1,482 +1,433 @@
 package parser
 
 import (
+	"strconv"
+
 	"csimple/ast"
+	"csimple/lexer"
 	"csimple/token"
 	"csimple/util"
-	"fmt"
-	"strconv"
 )
 
 type Parser struct {
-	input  []token.Token
-	cursor int
-	data   util.FileData
+  tokens []token.Token
+	data util.FileData
+  Cursor int
 }
 
-func New(input []token.Token, data util.FileData) Parser {
-	return Parser{
-		input:  input,
-		cursor: 0,
-		data:   data,
-	}
+func New(tokens []token.Token, data util.FileData) Parser {
+  return Parser { tokens, data, 0 }
 }
 
-func (p *Parser) Parse() ([]ast.Statement, bool) {
-	stats := []ast.Statement{}
-	hadError := false
-
-	for p.cursor < len(p.input) {
-		for p.match(token.NewLine) {
-			p.advance()
-		}
-
-		stat := p.statement()
-
-		// an error occurred
-		if stat == nil {
-			hadError = true
-
-			for p.cursor < len(p.input) && p.match(token.NewLine) {
-				p.advance()
-			}
-
-			continue
-		}
-
-		stats = append(stats, stat)
-	}
-
-	return stats, hadError
+func (this *Parser) advance() {
+  this.Cursor++
 }
 
-// ---
-
-func (p *Parser) statement() ast.Statement {
-	tk := p.advance()
-	next := p.peek(0)
-
-	if len(p.input) >= 1 {
-		switch tk.Type {
-		case token.IfKw:
-			return p.parseIfStat()
-
-		case token.GotoKw:
-			return p.parseGotoStat()
-
-		case token.PrintKw:
-			fallthrough
-		case token.PrintlnKw:
-			return p.parsePrintStat(tk)
-
-		case token.RetKw:
-			return ast.RetStat{}
-
-		case token.ExitKw:
-			return p.parseExitStat()
-		}
-	}
-
-	if len(p.input) >= 2 {
-		switch tk.Type {
-		case token.Identifier:
-			if next.Type == token.Assign {
-				return p.parseVarStat(tk)
-			}
-
-			if Find(string(next.Type), []string { token.PlusAssign, token.MinusAssign, token.TimesAssign, token.DivideAssign, token.PowerAssign, token.ModAssign, token.AndAssign, token.OrAssign }) != -1 {
-				return p.parseOperationStat(tk)
-			}
-
-		case token.Colon:
-			return p.parseLabelStat()
-		}
-	}
-
-	p.recede()
-	exp := p.parseExp(0)
-
-	if exp == nil {
-		return nil
-	}
-
-	return ast.ExpStat{Exp: exp}
-}
-
-// ---
-
-func (p *Parser) parseIfStat() ast.Statement {
-	cond := p.parseExp(0)
-
-	if cond == nil {
-		return nil
-	}
-
-	if !p.matchAdvance(token.GotoKw) {
-		util.ThrowError(p.data, p.peek(0).Pos, fmt.Sprintf("Expected 'goto' keyword after if condition, got '%s'.", p.peek(0).Lexeme))
-		return nil
-	}
-
-	label := p.parseLabel()
-
-	if label == "" {
-		return nil
-	}
-
-	return ast.IfStat{
-		Cond:  cond,
-		Label: label,
-	}
-}
-
-func (p *Parser) parseGotoStat() ast.Statement {
-	label := p.parseLabel()
-
-	if label == "" {
-		return nil
-	}
-
-	return ast.GotoStat{
-		Label: label,
-	}
-}
-
-func (p *Parser) parsePrintStat(tk token.Token) ast.Statement {
-	exp := p.parseExp(0)
-
-	if exp == nil {
-		return nil
-	}
-
-	return ast.PrintStat{
-		BreakLine: tk.Type == token.PrintlnKw,
-		Value:     exp,
-	}
-}
-
-func (p *Parser) parseExitStat() ast.Statement {
-	exp := p.parseExp(0)
-
-	if exp == nil {
-		return nil
-	}
-
-	return ast.ExitStat{
-		Code: exp,
-	}
-}
-
-/*
-if tk.Type != token.Identifier {
-  util.ThrowError(p.data, p.peek().Pos, "Variable names must be identifiers (e.g. only letters, numbers and underscores; cannot start with a number).")
-  return nil
-}
-*/
-
-func (p *Parser) parseVarStat(tk token.Token) ast.Statement {
-	//fmt.Println(p.peek(0))
-	if !p.matchAdvance(token.Assign) {
-		util.ThrowError(p.data, p.peek(0).Pos, fmt.Sprintf("Expected '=' after variable name, got '%s'", p.peek(0).Lexeme))
-		return nil
-	}
-
-	//fmt.Println(p.peek(0))
-	//fmt.Println(p.advance())
-	p.advance()
-	exp := p.parseExp(0)
-
-	if exp == nil {
-		return nil
-	}
-
-	return ast.VarStat{
-		Name:  tk.Lexeme,
-		Value: exp,
-	}
-}
-
-func (p *Parser) parseOperationStat(tk token.Token) ast.Statement {
-	ope := p.advance().Lexeme
-
-	if ope == "" {
-		util.ThrowError(p.data, p.peek(-1).Pos, fmt.Sprintf("Expected operation, got '%s'.", p.peek(-1).Lexeme))
-		return nil
-	}
-
-	exp := p.parseExp(0)
-
-	if exp == nil {
-		return nil
-	}
-
-	return ast.OperationStat{
-		Name:  tk.Lexeme,
-		Ope:   ope,
-		Value: exp,
-	}
-}
-
-func (p *Parser) parseLabelStat() ast.Statement {
-	label := p.parseLabel()
-
-	if label == "" {
-		return nil
-	}
-
-	return ast.LabelStat{
-		Name: label,
-	}
-}
-
-// ---
-
-func (p *Parser) parseLabel() string {
-	if !p.matchAdvance(token.Colon) {
-		util.ThrowError(p.data, p.peek(0).Pos, "Expected ':' before label name.")
-		return ""
-	}
-
-	tk := p.advance()
-
-	if tk.Type != token.Identifier {
-		util.ThrowError(p.data, tk.Pos, "Expected label name (identifier) after ':'.")
-	}
-
-	return tk.Lexeme
-}
-
-// ---
-
-/*
-Precedence Order:
-
-0 - And / Or
-1 - Equality
-2 - Less / Greater
-3 - Sum / Sub
-4 - Mul / Div
-5 - Mod / Power
-6 - Prefix
-7 - Postfix
-8 - Grouped (Parentheses)
-9 - Primary
-*/
-func (p *Parser) parseExp(precedence int) ast.Expression {
-	switch precedence {
-	case 0:
-		return p.bin(precedence, token.And, token.Or)
-
-	case 1:
-		return p.bin(precedence, token.Equals, token.Different)
-
-	case 2:
-		return p.bin(precedence, token.Less, token.LessEq, token.Greater, token.GreaterEq)
-
-	case 3:
-		return p.bin(precedence, token.Plus, token.Minus)
-
-	case 4:
-		return p.bin(precedence, token.Times, token.Divide)
-
-	case 5:
-		return p.bin(precedence, token.Mod, token.Power)
-
-	case 6:
-		if Find(p.peek(0).Lexeme, []string { "!", "-" }) != -1 {
-			ope := p.advance().Lexeme
-			exp := p.parseExp(precedence + 1)
-
-			if exp == nil {
-				return nil
-			}
-
-			return ast.UnaryExp{
-				Exp: exp,
-				Ope: ope,
-			}
-		}
-
-		fallthrough
-
-	case 7:
-		exp := p.parseExp(precedence + 1)
-
-		if exp == nil {
-			return nil
-		}	
-
-		if Find(p.peek(0).Lexeme, []string { "!" }) != -1 {
-			ope := p.advance().Lexeme
-
-			return ast.UnaryExp{
-				Exp: exp,
-				Ope: ope,
-			}
-		}
-
-		return exp
-
-	case 8:
-		if p.matchAdvance(token.LParen) {
-			exp := p.parseExp(0)
-
-			if exp == nil {
-				return nil
-			}
-
-			if !p.matchAdvance(token.RParen) {
-				util.ThrowError(p.data, p.peek(0).Pos, fmt.Sprintf("Expected ')' after expression, got '%s'.", p.peek(0).Lexeme))
-				return nil
-			}
-
-			return exp
-		}
-
-	case 9:
-		tk := p.advance()
-		fmt.Println(tk.Type)
-
-		switch tk.Type {
-		case token.Identifier:
-			return ast.IdentifierExp{
-				Value: tk.Lexeme,
-			}
-
-		case token.Number:
-			fmt.Println("number!")
-			value, err := strconv.ParseFloat(tk.Lexeme, 64)
-
-			if err != nil {
-				util.ThrowError(p.data, tk.Pos, fmt.Sprintf("Invalid number: '%s'", tk.Lexeme))
-				return nil
-			}
-
-			return ast.NumberExp{
-				Value: value,
-			}
-
-		case token.TrueKw:
-			fallthrough
-		case token.FalseKw:
-			return ast.BoolExp{
-				Value: tk.Type == token.TrueKw,
-			}
-
-		case token.InputKw:
-			ty := ""
-
-			switch p.peek(0).Type {
-			case token.TypeNum:
-				ty = ast.InputNum
-
-			case token.TypeStr:
-				ty = ast.InputStr
-
-			case token.TypeBool:
-				ty = ast.InputBool
-			}
-
-			return ast.InputExp{
-				Type: ty,
-			}
-
-		case token.ExecKw:
-			exp := p.parseExp(0)
-
-			return ast.ExecExp{
-				Command: exp,
-			}
-		}
-	}
-
-	util.ThrowError(p.data, p.peek(-1).Pos, fmt.Sprintf("Expected expression, got '%s'.", p.peek(-1).Lexeme))
-	return nil
-}
-
-func (p *Parser) bin(precedence int, types ...token.TokenType) ast.Expression {
-	left := p.parseExp(precedence + 1)
-
-	if left == nil {
-		return nil
-	}
-
-	ope := ""
-
-	for _, tk := range types {
-		if p.matchAdvance(tk) {
-			ope = p.peek(0).Lexeme
-			break
-		}
-	}
-
-	if ope == "" {
-		util.ThrowError(p.data, p.peek(0).Pos, fmt.Sprintf("Expected an infix operator, got '%s'.", p.peek(0).Lexeme))
-		return nil
-	}
-
-	right := p.parseExp(precedence + 1)
-
-	if right == nil {
-		return nil
-	} else {
-		left = ast.BinExp{
-			Left:  left,
-			Right: right,
-			Ope:   ope,
-		}
-	}
-
-	return left
-}
-
-// ---
-
-func (p *Parser) peek(offset int) token.Token {
-	if p.cursor + offset >= len(p.input) {
+func (this *Parser) token() token.Token {
+  if this.Cursor >= len(this.tokens) {
 		return token.Token{
 			Lexeme: "",
 			Pos: token.Position{
-				Line: p.input[p.cursor - 1 + offset].Pos.Line,
-				Col:  p.input[p.cursor - 1 + offset].Pos.Col + len(p.input[p.cursor-1].Lexeme),
+				Line: this.tokens[this.Cursor - 1].Pos.Line,
+				Col:  this.tokens[this.Cursor - 1].Pos.Col + len(this.tokens[this.Cursor-1].Lexeme),
 			},
 		}
 	}
 
-	return p.input[p.cursor + offset]
+	return this.tokens[this.Cursor]
 }
 
-func (p *Parser) match(t token.TokenType) bool {
-	return p.peek(0).Type == t
-}
-
-func (p *Parser) advance() token.Token {
-	t := p.peek(0)
-	p.cursor++
-
-	return t
-}
-
-func (p *Parser) recede() {
-	p.cursor--
-}
-
-func (p *Parser) matchAdvance(t token.TokenType) bool {
-	if p.match(t) {
-		p.advance()
-		return true
-	}
-
-	return false
-}
-
-// ---
-
-func Find(what string, where []string) int {
-	for i, v := range where {
-		if v == what {
-			return i
+func (this *Parser) peekToken() token.Token {
+  if this.Cursor + 1 >= len(this.tokens) {
+		return token.Token{
+			Lexeme: "",
+			Pos: token.Position{
+				Line: this.tokens[this.Cursor].Pos.Line,
+				Col:  this.tokens[this.Cursor].Pos.Col + len(this.tokens[this.Cursor-1].Lexeme),
+			},
 		}
 	}
 
-	return -1
+	return this.tokens[this.Cursor + 1]
+}
+
+func (this *Parser) NextStatement() ast.Statement {
+  if len(this.tokens) >= 2 && this.token().Type == token.Identifier && this.tokens[this.Cursor + 1].Type == token.Assign {
+    return this.parseVarDeclStatement()
+  }
+  
+  if len(this.tokens) >= 2 && this.token().Type == token.Identifier && Find(string(this.tokens[this.Cursor + 1].Type), []string { token.PlusAssign, token.MinusAssign, token.TimesAssign, token.DivideAssign, token.PowerAssign, token.ModAssign, token.AndAssign, token.OrAssign }) != -1 {
+    return this.parseOperationStatement()
+  }
+  
+  if len(this.tokens) >= 1 && (this.token().Type == token.PrintlnKw || this.token().Type == token.PrintKw) {
+    return this.parsePrintStatement()
+  }
+  
+  if len(this.tokens) >= 1 && this.token().Type == token.GotoKw {
+    return this.parseGotoStatement()
+  }
+  
+  if len(this.tokens) >= 1 && this.token().Type == token.IfKw {
+    return this.parseIfStatement()
+  }
+  
+  if len(this.tokens) >= 1 && this.token().Type == token.Label {
+    return this.parseLabelStatement()
+  }
+  
+  if len(this.tokens) >= 1 && this.token().Type == token.RetKw {
+    return ast.RetStat {}
+  }
+  
+  if len(this.tokens) >= 1 && this.token().Type == token.ExitKw {
+    return this.parseExitStatement()
+  }
+  
+  exp := this.parseExpression()
+  return ast.ExpStat { Exp: exp }
+}
+
+func (this *Parser) parseVarDeclStatement() ast.Statement {
+  stat := ast.VarStat {}
+  id := this.token().Lexeme
+  
+  stat.Name = id
+  this.advance()
+  
+  if this.token().Type != token.Assign {
+    util.ThrowError(this.data, this.token().Pos, "")
+  }
+  
+  this.advance()
+  stat.Value = this.parseExpression()
+  
+  return stat
+}
+
+func (this *Parser) parseOperationStatement() ast.Statement {
+  stat := ast.OperationStatement {}
+  id := ast.Identifier { Token: this.token(), Value: this.token().Content }
+  
+  stat.Name = id
+  this.advance()
+  
+  if Find(string(this.token().Type), []string { token.PlusAssign, token.MinusAssign, token.TimesAssign, token.DivideAssign, token.PowerAssign, token.ModAssign, token.AndAssign, token.OrAssign }) == -1 {
+    return ast.ErrorStatement { Msg: "Syntax error when setting a value. Examples: a -= 10; message += 'Hello'." }
+  }
+  
+  stat.Op = string(this.token().Content[0])
+  
+  this.advance()
+  stat.Value = this.parseExpression()
+  
+  return stat
+}
+
+func (this *Parser) parsePrintStatement() ast.Statement {
+  stat := ast.PrintStatement {}
+  
+  tk := this.token()
+  this.advance()
+  expr := this.parseExpression()
+  
+  if tk.Type == token.Error || expr == nil {
+    return ast.ErrorStatement { Msg: "Syntax error in a print statement. Examples: print 'Hello World'; print 1 + 1." }
+  }
+  
+  stat.Token = tk
+  stat.BreakLine = tk.Type != token.PrintKw
+  stat.Expression = expr
+  
+  this.advance()
+  
+  return stat
+}
+
+func (this *Parser) parseGotoStatement() ast.Statement {
+  stat := ast.GotoStatement {}
+  
+  tk := this.token()
+  this.advance()
+  label := this.token().Content
+  
+  if tk.Type == token.Error || this.token().Type != token.Label {
+    return ast.ErrorStatement { Msg: "Syntax error in a goto statement. Examples: goto :jump, goto :label." }
+  }
+  
+  stat.Token = tk
+  stat.Label = label
+  
+  this.advance()
+  
+  return stat
+}
+
+func (this *Parser) parseIfStatement() ast.Statement {
+  stat := ast.IfStatement {}
+  
+  tk := this.token()
+  this.advance()
+  
+  exp := this.parseExpression()
+  
+  if this.token().Type != token.GotoKw {
+    return ast.ErrorStatement { Msg: "Syntax error in a if statement: expected 'goto', got '" + this.token().Content + "'.\nExamples: if a < 1 goto :jump, if false | b goto :label." }
+  }
+  
+  this.advance()
+  
+  label := this.token().Content
+  
+  if tk.Type == token.Error || this.token().Type != token.Label {
+    return ast.ErrorStatement { Msg: "Syntax error in a if statement. Examples: if a < 1 goto :jump, if false | b goto :label." }
+  }
+  
+  stat.Token = tk
+  stat.Expression = exp
+  stat.Label = label
+  
+  this.advance()
+  
+  return stat
+}
+
+func (this *Parser) parseLabelStatement() ast.Statement {
+  tk := this.token()
+  this.advance()
+  
+  return ast.LabelStatement { tk.Content[1:] }
+}
+
+func (this *Parser) parseExitStatement() ast.Statement {
+  this.advance()
+  
+  if this.token().Type == token.Number {
+    exp := this.parseExpression()
+    
+    return ast.ExitStatement { exp }
+  }
+  
+  return ast.ExitStatement { ast.NumberNode { -1 } }
+}
+
+func (this *Parser) parseExpression() ast.ExpressionNode {
+  return this.boolean()
+}
+
+func (this *Parser) boolean() ast.ExpressionNode {
+  if this.token().Type == token.Error {
+    return nil
+  }
+  
+  res := this.exp()
+  
+  for this.token().Type != token.Error && (this.token().Type == token.And || this.token().Type == token.Or || this.token().Type == token.Equals || this.token().Type == token.Different || this.token().Type == token.Greater|| this.token().Type == token.GreaterEq || this.token().Type == token.Less || this.token().Type == token.LessEq) {
+    if this.token().Type == token.And {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), "&" }
+    } else if this.token().Type == token.Or {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), "|" }
+    } else if this.token().Type == token.Equals {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), "==" }
+    } else if this.token().Type == token.Different {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), "!=" }
+    } else if this.token().Type == token.Greater {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), ">" }
+    } else if this.token().Type == token.GreaterEq {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), ">=" }
+    } else if this.token().Type == token.Less {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), "<" }
+    } else if this.token().Type == token.LessEq {
+      this.advance()
+      
+      res = ast.BinNode { res, this.exp(), "<=" }
+    }
+  }
+  
+  return res
+}
+
+func (this *Parser) exp() ast.ExpressionNode {
+  if this.token().Type == token.Error {
+    return nil
+  }
+  
+  res := this.term()
+  
+  for this.token().Type != token.Error && (this.token().Type == token.Plus || this.token().Type == token.Minus) {
+    if this.token().Type == token.Plus {
+      this.advance()
+      
+      res = ast.BinNode { res, this.term(), "+" }
+    } else if this.token().Type == token.Minus {
+      this.advance()
+      
+      res = ast.BinNode { res, this.term(), "-" }
+    }
+  }
+  
+  return res
+}
+
+func (this *Parser) term() ast.ExpressionNode {
+  if this.token().Type == token.Error {
+    return nil
+  }
+  
+  res := this.postfix()
+  
+  for this.token().Type != token.Error && (this.token().Type == token.Times || this.token().Type == token.Divide || this.token().Type == token.Power || this.token().Type == token.Mod) {
+    if this.token().Type == token.Times {
+      this.advance()
+      
+      res = ast.BinNode { res, this.postfix(), "*" }
+    } else if this.token().Type == token.Divide {
+      this.advance()
+      
+      res = ast.BinNode { res, this.postfix(), "/" }
+    } else if this.token().Type == token.Power {
+      this.advance()
+      
+      res = ast.BinNode { res, this.postfix(), "^" }
+    } else if this.token().Type == token.Mod {
+      this.advance()
+      
+      res = ast.BinNode { res, this.postfix(), "%" }
+    }
+  }
+  
+  return res
+}
+
+func (this *Parser) postfix() ast.ExpressionNode {
+  if this.token().Type == token.Error {
+    return nil
+  }
+  
+  res := this.factor()
+  
+  if this.token().Type == token.Bang {
+    return ast.FactorialNode { res }
+  }
+  
+  return res
+}
+
+func (this *Parser) factor() ast.ExpressionNode {
+  tk := this.token()
+  
+  if tk.Type == token.LParen {
+    this.advance()
+    res := this.exp()
+    
+    this.advance()
+    return res
+  }
+  
+  if tk.Type == token.Plus {
+    this.advance()
+    
+    return ast.PlusNode { this.factor() }
+  }
+  
+  if tk.Type == token.Minus {
+    this.advance()
+    
+    return ast.MinusNode { this.factor() }
+  }
+  
+  if tk.Type == token.Number {
+    this.advance()
+    
+    value, _ := strconv.ParseFloat(tk.Content, 64)
+    return ast.NumberNode { value }
+  }
+  
+  if tk.Type == token.String {
+    this.advance()
+    
+    return ast.StringNode { tk.Content }
+  }
+  
+  if tk.Type == token.Identifier {
+    this.advance()
+    
+    return ast.Identifier { tk, tk.Content }
+  }
+  
+  if tk.Type == token.InputKw {
+    peek := this.peekToken()
+    typ := ""
+    this.advance()
+    
+    if lexer.IsType(peek.Content) {
+      typ = string(token.TypeTokens[peek.Content])
+      this.advance()
+    }
+    
+    return ast.InputNode { typ }
+  }
+  
+  if tk.Type == token.TrueKw {
+    this.advance()
+    
+    return ast.BoolNode { ast.TrueType }
+  }
+  
+  if tk.Type == token.FalseKw {
+    this.advance()
+    
+    return ast.BoolExp { ast.FalseType }
+  }
+  
+  if tk.Type == token.ExecKw {
+    this.advance()
+    
+    return ast.ExecExp { this.exp() }
+  }
+  
+  // panic
+  return nil
+}
+
+func (p *Parser) Parse() ([]ast.Statement, bool) {
+  stats := []ast.Statement {}
+	hadError := false
+
+	for p.Cursor < len(p.tokens) {
+		st := p.NextStatement()
+
+		if st == nil {
+			hadError = true
+			continue
+		}
+
+		stats = append(stats, st)
+	}
+  
+  return stats, hadError
+}
+
+func Find(what string, where []string) int {
+  for i, v := range where {
+    if v == what {
+      return i
+    }
+  }
+  
+  return -1
 }
