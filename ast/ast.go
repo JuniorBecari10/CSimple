@@ -22,13 +22,13 @@ type VarStat struct {
 type OperationStat struct {
   Name  string
   Value Expression
-  Op    string
+  Ope   string
 }
 
 // Syntax: print <expression>
 type PrintStat struct {
-  BreakLine   bool
-  Value  Expression
+  BreakLine bool
+  Value     Expression
 }
 
 // Syntax: goto :<label>
@@ -38,8 +38,8 @@ type GotoStat struct {
 
 // Syntax: if <expression> goto :<label>
 type IfStat struct {
-  Exp Expression
-  Label      string
+  Cond  Expression
+  Label string
 }
 
 type ExpStat struct {
@@ -89,21 +89,18 @@ type BoolExp struct {
 }
 
 type BinExp struct {
-  NodeA Expression
-  NodeB Expression
-  Op string
+  Left  Expression
+  Right Expression
+  Ope   string
 }
 
-type MinusExp struct {
-  Value Expression
+type UnaryExp struct {
+  Exp Expression
+  Ope string
 }
 
 type InputExp struct {
   Type string
-}
-
-type FactorialExp struct {
-  Exp Expression
 }
 
 type ExecExp struct {
@@ -115,7 +112,6 @@ func (n NumberExp)     exp() {}
 func (s StringExp)     exp() {}
 func (b BoolExp)       exp() {}
 func (b BinExp)        exp() {}
-func (m MinusExp)      exp() {}
+func (u UnaryExp)      exp() {}
 func (i InputExp)      exp() {}
-func (f FactorialExp)  exp() {}
 func (e ExecExp)       exp() {}

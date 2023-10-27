@@ -50,9 +50,11 @@ func (l *Lexer) Lex() ([]token.Token, bool) {
 		l.start = l.cursor
 		l.startPos = l.pos
 
-		switch l.advance() {
+    ch := l.advance()
+
+		switch ch {
 		case '\n':
-			tokens = append(tokens, l.newTokenAbs(token.NewLine, "", ""))
+			tokens = append(tokens, l.newTokenAbs(token.NewLine, "\n", "\n"))
 			//l.pos.Line++
 			//l.pos.Col = 0
 
@@ -169,9 +171,7 @@ func (l *Lexer) Lex() ([]token.Token, bool) {
 			tokens = append(tokens, l.newToken(token.Colon))
 
 		default:
-			if l.isDigit(l.peek()) {
-				l.advance()
-
+			if l.isDigit(ch) {
 				for l.isDigit(l.peek()) || l.peek() == '.' {
 					l.advance()
 				}
@@ -179,19 +179,17 @@ func (l *Lexer) Lex() ([]token.Token, bool) {
 				n, err := strconv.ParseFloat(l.input[l.start:l.cursor], 64)
 
 				if err != nil {
-					util.ThrowError(l.data, l.startPos, fmt.Sprintf("Invalid number: '%s'", l.input[l.start:l.cursor]))
+					util.ThrowError(l.data, l.startPos, fmt.Sprintf("Invalid number: '%s'.", l.input[l.start:l.cursor]))
 					hadError = true
 
 					continue
 				}
 
 				tokens = append(tokens, l.newTokenLit(token.Number, n))
-        continue
+				continue
 			}
 
-			if l.isIdent(l.peek()) {
-				l.advance()
-
+			if l.isIdent(ch) {
 				for l.isIdent(l.peek()) || l.isDigit(l.peek()) {
 					l.advance()
 				}
@@ -202,9 +200,9 @@ func (l *Lexer) Lex() ([]token.Token, bool) {
 
 			// else
 			l.recede()
-			util.ThrowError(l.data, l.pos, fmt.Sprintf("Unknown token: '%c'", l.input[l.cursor]))
+			util.ThrowError(l.data, l.pos, fmt.Sprintf("Unknown token: '%c'.", l.input[l.cursor]))
 			l.advance()
-			
+
 			hadError = true
 		}
 	}
@@ -220,10 +218,10 @@ func (l *Lexer) skipWhitespace() {
 
 func (l *Lexer) peek() uint8 {
 	if l.cursor >= len(l.input) {
-    return 0
-  }
+		return 0
+	}
 
-  return l.input[l.cursor]
+	return l.input[l.cursor]
 }
 
 func (l *Lexer) advance() uint8 {
@@ -240,9 +238,9 @@ func (l *Lexer) advance() uint8 {
 	return c
 }
 
-// todo! check if it's out of bounds and change Line if so
+// todo! check if it's out of bounds and change 'Line' if so
 func (l *Lexer) recede() {
-  if l.pos.Col == 0 {
+	if l.pos.Col == 0 {
 		if l.pos.Line == 0 {
 			panic("line cannot be lower than 0!")
 		}
@@ -273,7 +271,7 @@ func (l *Lexer) isIdent(c uint8) bool {
 }
 
 func (l *Lexer) newToken(ty token.TokenType) token.Token {
-	return token.Token{
+	return token.Token {
 		Type:    ty,
 		Pos:     l.startPos,
 		Lexeme:  l.input[l.start:l.cursor],
@@ -282,7 +280,7 @@ func (l *Lexer) newToken(ty token.TokenType) token.Token {
 }
 
 func (l *Lexer) newTokenLit(ty token.TokenType, lit any) token.Token {
-	return token.Token{
+	return token.Token {
 		Type:    ty,
 		Pos:     l.startPos,
 		Lexeme:  l.input[l.start:l.cursor],
@@ -291,7 +289,7 @@ func (l *Lexer) newTokenLit(ty token.TokenType, lit any) token.Token {
 }
 
 func (l *Lexer) newTokenAbs(ty token.TokenType, lex string, lit any) token.Token {
-	return token.Token{
+	return token.Token {
 		Type:    ty,
 		Pos:     l.startPos,
 		Lexeme:  lex,

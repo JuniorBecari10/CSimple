@@ -9,11 +9,11 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-  input := ">=   \n hello_"
-	l := New(input, util.FileData {
-    Name: "test.go",
-    Lines: strings.Split(input, "\n"),
-  })
+	input := "x = 10"
+	l := New(input, util.FileData{
+		Name:  "test.go",
+		Lines: strings.Split(input, "\n"),
+	})
 	tokens, hadError := l.Lex()
 
 	if hadError {
@@ -22,33 +22,33 @@ func TestLexer(t *testing.T) {
 
 	expected := []token.Token{
 		{
-			Type: token.GreaterEq,
+			Type: token.Identifier,
 			Pos: token.Position{
 				Line: 0,
 				Col:  0,
 			},
-			Lexeme:  ">=",
-			Literal: ">=",
+			Lexeme:  "x",
+			Literal: "x",
 		},
 
 		{
-			Type: token.NewLine,
+			Type: token.Assign,
 			Pos: token.Position{
 				Line: 0,
-				Col: 5,
+				Col:  2,
 			},
-			Lexeme: "",
-			Literal: "",
+			Lexeme:  "=",
+			Literal: "=",
 		},
-    
+
 		{
-			Type: token.Identifier,
+			Type: token.Number,
 			Pos: token.Position{
-				Line: 1,
-				Col:  1,
+				Line: 0,
+				Col:  4,
 			},
-			Lexeme:  "hello_",
-			Literal: "hello_",
+			Lexeme:  "10",
+			Literal: 10.0,
 		},
 	}
 	if len(tokens) != len(expected) {

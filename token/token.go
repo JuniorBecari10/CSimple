@@ -6,7 +6,7 @@ const (
 	Identifier = "Identifier"
 	Label      = "Label"
 
-  NewLine = "NewLine"
+	NewLine = "NewLine"
 
 	PrintlnKw = "PrintlnKw"
 	PrintKw   = "PrintKw"
